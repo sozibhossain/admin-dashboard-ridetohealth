@@ -1,0 +1,45 @@
+# Dependencies
+node_modules/
+package-lock.json
+npm-debug.log*
+yarn.lock
+yarn-debug.log*
+yarn-error.log*
+pnpm-lock.yaml
+bun.lockb
+
+# Next.js build output
+.next/
+out/
+.next_old/
+dist/
+
+# Production
+build/
+
+
+# Debug / logs
+*.log
+logs
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# OS / Editor junk
+.DS_Store
+Thumbs.db
+
+# VSCode
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+
+# Typescript
+*.tsbuildinfo
+
+# Misc
+coverage/
+.idea/
+*.swp
+*.swo
