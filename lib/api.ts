@@ -125,7 +125,7 @@ export const servicesApi = {
       headers: { "Content-Type": "multipart/form-data" },
     }),
   update: (id: string, data: FormData) =>
-    api.put(`/api/admin/services/${id}`, data, {
+    api.put(`/api/service/services/${id}`, data, {
       headers: { "Content-Type": "multipart/form-data" },
     }),
   delete: (id: string) => api.delete(`/api/admin/services/${id}`),

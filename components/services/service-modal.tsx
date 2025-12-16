@@ -1,10 +1,15 @@
 "use client"
 
 import type React from "react"
-
 import { useState, useEffect } from "react"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -24,21 +29,26 @@ export function ServiceModal({ isOpen, onClose, service }: ServiceModalProps) {
     name: "",
     description: "",
     serviceImage: null as File | null,
+    previewImage: "", // 👈 for existing + new preview
   })
+
   const queryClient = useQueryClient()
 
+  // Load existing service data
   useEffect(() => {
     if (service) {
       setFormData({
         name: service.name || "",
         description: service.description || "",
         serviceImage: null,
+        previewImage: service.serviceImage || "",
       })
     } else {
       setFormData({
         name: "",
         description: "",
         serviceImage: null,
+        previewImage: "",
       })
     }
   }, [service])
@@ -62,12 +72,16 @@ export function ServiceModal({ isOpen, onClose, service }: ServiceModalProps) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+
     const data = new FormData()
     data.append("name", formData.name)
     data.append("description", formData.description)
+
+    // Only send image if user selected a new one
     if (formData.serviceImage) {
       data.append("serviceImage", formData.serviceImage)
     }
+
     mutation.mutate(data)
   }
 
@@ -77,45 +91,80 @@ export function ServiceModal({ isOpen, onClose, service }: ServiceModalProps) {
         <DialogHeader>
           <DialogTitle>{service ? "Edit Service" : "Add Service"}</DialogTitle>
         </DialogHeader>
+
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Service Name */}
           <div className="space-y-2">
             <Label htmlFor="name">Service Name</Label>
             <Input
               id="name"
               value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, name: e.target.value })
+              }
               placeholder="Enter service name"
               required
             />
           </div>
 
+          {/* Description */}
           <div className="space-y-2">
             <Label htmlFor="description">Description</Label>
             <Textarea
               id="description"
               value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, description: e.target.value })
+              }
               placeholder="Enter service description"
               required
             />
           </div>
 
+          {/* Image Upload */}
           <div className="space-y-2">
             <Label htmlFor="image">Service Image</Label>
             <Input
               id="image"
               type="file"
               accept="image/*"
-              onChange={(e) => setFormData({ ...formData, serviceImage: e.target.files?.[0] || null })}
+              onChange={(e) => {
+                const file = e.target.files?.[0]
+                if (file) {
+                  setFormData({
+                    ...formData,
+                    serviceImage: file,
+                    previewImage: URL.createObjectURL(file),
+                  })
+                }
+              }}
             />
           </div>
+
+          {/* Image Preview */}
+          {formData.previewImage && (
+            <div className="space-y-2">
+              <Label>Image Preview</Label>
+              <img
+                src={formData.previewImage}
+                alt="Service Preview"
+                className="h-32 w-full rounded-md object-cover border"
+              />
+            </div>
+          )}
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose}>
               Cancel
             </Button>
-            <Button type="submit" disabled={mutation.isPending} className="bg-[#8B0000] hover:bg-[#700000]">
-              {mutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            <Button
+              type="submit"
+              disabled={mutation.isPending}
+              className="bg-[#8B0000] hover:bg-[#700000]"
+            >
+              {mutation.isPending && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              )}
               {service ? "Update" : "Create"}
             </Button>
           </DialogFooter>
