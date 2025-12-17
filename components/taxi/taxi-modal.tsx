@@ -1,57 +1,36 @@
-"use client";
+"use client"
 
-import type React from "react";
-import { useState, useEffect, useRef } from "react";
-import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
+import type { FC } from "react"
+import { useState, useEffect } from "react"
+import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query"
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogFooter,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+} from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { taxiApi, servicesApi } from "@/lib/api";
-import { toast } from "sonner";
-import { Loader2, Upload, X } from "lucide-react";
-
-interface Service {
-  _id: string;
-  name: string;
-}
-
-interface Taxi {
-  _id: string;
-  taxiName: string;
-  model: string;
-  plateNumber: string;
-  color: string;
-  year: number;
-  vin: string;
-  serviceImage: string; // Backend returns the URL string
-  serviceId: {
-    _id: string;
-    name: string;
-  };
-}
+} from "@/components/ui/select"
+import { taxiApi, servicesApi } from "@/lib/api"
+import { toast } from "sonner"
+import { Loader2 } from "lucide-react"
 
 interface TaxiModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  taxi?: Taxi | null;
+  isOpen: boolean
+  onClose: () => void
+  taxi?: any // You can improve this with a proper type later
 }
 
-export function TaxiModal({ isOpen, onClose, taxi }: TaxiModalProps) {
-  const fileInputRef = useRef<HTMLInputElement>(null);
+export const TaxiModal: FC<TaxiModalProps> = ({ isOpen, onClose, taxi }) => {
   const [formData, setFormData] = useState({
     taxiName: "",
     model: "",
@@ -60,23 +39,20 @@ export function TaxiModal({ isOpen, onClose, taxi }: TaxiModalProps) {
     year: "",
     vin: "",
     serviceId: "",
-  });
+  })
 
-  // Handle the image separately to manage File object and local preview
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string>("");
+  const queryClient = useQueryClient()
 
-  const queryClient = useQueryClient();
-
-  const { data: servicesData } = useQuery({
+  const { data: servicesData, isLoading: servicesLoading } = useQuery({
     queryKey: ["services-list"],
     queryFn: async () => {
-      const response = await servicesApi.getAll(1);
-      return response.data;
+      const response = await servicesApi.getAll(1)
+      return response.data // assuming response has { data: [...] }
     },
-    enabled: isOpen,
-  });
+    enabled: isOpen, // only fetch when modal is open
+  })
 
+  // Reset form when taxi prop changes or modal opens/closes
   useEffect(() => {
     if (taxi) {
       setFormData({
@@ -86,10 +62,8 @@ export function TaxiModal({ isOpen, onClose, taxi }: TaxiModalProps) {
         color: taxi.color || "",
         year: taxi.year?.toString() || "",
         vin: taxi.vin || "",
-        serviceId: taxi.serviceId?._id || "",
-      });
-      setPreviewUrl(taxi.serviceImage || "");
-      setSelectedFile(null);
+        serviceId: taxi.serviceId?._id || taxi.serviceId || "", // handle both populated and ref cases
+      })
     } else {
       setFormData({
         taxiName: "",
@@ -99,63 +73,51 @@ export function TaxiModal({ isOpen, onClose, taxi }: TaxiModalProps) {
         year: "",
         vin: "",
         serviceId: "",
-      });
-      setPreviewUrl("");
-      setSelectedFile(null);
+      })
     }
-  }, [taxi, isOpen]);
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setSelectedFile(file);
-      setPreviewUrl(URL.createObjectURL(file)); // Create temporary preview URL
-    }
-  };
-
-  const removeImage = () => {
-    setSelectedFile(null);
-    setPreviewUrl("");
-    if (fileInputRef.current) fileInputRef.current.value = "";
-  };
+  }, [taxi, isOpen])
 
   const mutation = useMutation({
-    mutationFn: async (payload: FormData) => {
+    mutationFn: async (data: typeof formData) => {
       if (taxi) {
-        return taxiApi.update(taxi._id, payload);
+        // Assuming update takes taxi ID and data
+        return taxiApi.update(taxi._id, data)
+      } else {
+        // Create needs serviceId + other data
+        if (!data.serviceId) {
+          throw new Error("Service is required")
+        }
+        return taxiApi.create(data.serviceId, {
+          taxiName: data.taxiName,
+          model: data.model,
+          plateNumber: data.plateNumber,
+          color: data.color,
+          year: data.year,
+          vin: data.vin,
+        })
       }
-      // Assuming create API expects (serviceId, formData)
-      return taxiApi.create(formData.serviceId, payload);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["taxis"] });
-      toast.success(taxi ? "Taxi updated" : "Taxi created");
-      onClose();
+      queryClient.invalidateQueries({ queryKey: ["taxis"] })
+      toast.success(taxi ? "Taxi updated successfully" : "Taxi created successfully")
+      onClose()
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.message || "Error saving taxi");
+      toast.error(error?.message || (taxi ? "Failed to update taxi" : "Failed to create taxi"))
     },
-  });
+  })
 
   const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+    e.preventDefault()
 
-    // Create FormData object to send file and text together
-    const data = new FormData();
-    data.append("taxiName", formData.taxiName);
-    data.append("model", formData.model);
-    data.append("plateNumber", formData.plateNumber);
-    data.append("color", formData.color);
-    data.append("year", formData.year);
-    data.append("vin", formData.vin);
-    data.append("serviceId", formData.serviceId);
-
-    if (selectedFile) {
-      data.append("serviceImage", selectedFile);
+    // Basic validation
+    if (!formData.serviceId) {
+      toast.error("Please select a service type")
+      return
     }
 
-    mutation.mutate(data);
-  };
+    mutation.mutate(formData)
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -163,116 +125,135 @@ export function TaxiModal({ isOpen, onClose, taxi }: TaxiModalProps) {
         <DialogHeader>
           <DialogTitle>{taxi ? "Edit Taxi" : "Add Taxi"}</DialogTitle>
         </DialogHeader>
+
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Service Type */}
+          <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="serviceId">Service Type</Label>
+              <Label htmlFor="serviceId">Service Type *</Label>
               <Select
                 value={formData.serviceId}
-                onValueChange={(v) => setFormData({ ...formData, serviceId: v })}
-                required
+                onValueChange={(value) =>
+                  setFormData({ ...formData, serviceId: value })
+                }
+                disabled={servicesLoading}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select service" />
+                  <SelectValue placeholder={servicesLoading ? "Loading..." : "Select service"} />
                 </SelectTrigger>
                 <SelectContent>
-                  {servicesData?.data?.map((s: Service) => (
-                    <SelectItem key={s._id} value={s._id}>{s.name}</SelectItem>
+                  {servicesData?.data?.map((service: any) => (
+                    <SelectItem key={service._id} value={service._id}>
+                      {service.name}
+                    </SelectItem>
                   ))}
+                  {servicesLoading && (
+                    <SelectItem value="loading" disabled>
+                      Loading services...
+                    </SelectItem>
+                  )}
                 </SelectContent>
               </Select>
             </div>
 
-            {/* Taxi Name */}
             <div className="space-y-2">
               <Label htmlFor="taxiName">Taxi Name</Label>
               <Input
                 id="taxiName"
                 value={formData.taxiName}
-                onChange={(e) => setFormData({ ...formData, taxiName: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, taxiName: e.target.value })
+                }
+                placeholder="Enter taxi name"
                 required
               />
             </div>
 
-            {/* Model & Plate */}
             <div className="space-y-2">
               <Label htmlFor="model">Model</Label>
-              <Input id="model" value={formData.model} onChange={(e) => setFormData({ ...formData, model: e.target.value })} required />
+              <Input
+                id="model"
+                value={formData.model}
+                onChange={(e) =>
+                  setFormData({ ...formData, model: e.target.value })
+                }
+                placeholder="e.g. Toyota Prius"
+                required
+              />
             </div>
+
             <div className="space-y-2">
               <Label htmlFor="plateNumber">Plate Number</Label>
-              <Input id="plateNumber" value={formData.plateNumber} onChange={(e) => setFormData({ ...formData, plateNumber: e.target.value })} required />
+              <Input
+                id="plateNumber"
+                value={formData.plateNumber}
+                onChange={(e) =>
+                  setFormData({ ...formData, plateNumber: e.target.value })
+                }
+                placeholder="ABC-1234"
+                required
+              />
             </div>
 
-            {/* Color & Year */}
             <div className="space-y-2">
               <Label htmlFor="color">Color</Label>
-              <Input id="color" value={formData.color} onChange={(e) => setFormData({ ...formData, color: e.target.value })} required />
+              <Input
+                id="color"
+                value={formData.color}
+                onChange={(e) =>
+                  setFormData({ ...formData, color: e.target.value })
+                }
+                placeholder="Yellow"
+                required
+              />
             </div>
+
             <div className="space-y-2">
               <Label htmlFor="year">Year</Label>
-              <Input id="year" type="number" value={formData.year} onChange={(e) => setFormData({ ...formData, year: e.target.value })} required />
+              <Input
+                id="year"
+                type="number"
+                min="1900"
+                max={new Date().getFullYear() + 1}
+                value={formData.year}
+                onChange={(e) =>
+                  setFormData({ ...formData, year: e.target.value })
+                }
+                placeholder="2023"
+                required
+              />
             </div>
 
-            {/* VIN */}
-            <div className="space-y-2 md:col-span-2">
+            <div className="space-y-2 col-span-2">
               <Label htmlFor="vin">VIN</Label>
-              <Input id="vin" value={formData.vin} onChange={(e) => setFormData({ ...formData, vin: e.target.value })} required />
-            </div>
-
-            {/* IMAGE UPLOAD FIELD */}
-            <div className="space-y-2 md:col-span-2">
-              <Label>Service Image</Label>
-              <div 
-                className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-dashed rounded-md hover:border-[#8B0000] transition-colors cursor-pointer relative"
-                onClick={() => fileInputRef.current?.click()}
-              >
-                {previewUrl ? (
-                  <div className="relative w-full h-40">
-                    <img src={previewUrl} alt="Preview" className="h-full w-full object-contain" />
-                    <button
-                      type="button"
-                      onClick={(e) => { e.stopPropagation(); removeImage(); }}
-                      className="absolute -top-2 -right-2 bg-red-600 text-white rounded-full p-1"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  </div>
-                ) : (
-                  <div className="space-y-1 text-center">
-                    <Upload className="mx-auto h-12 w-12 text-gray-400" />
-                    <div className="flex text-sm text-gray-600">
-                      <span className="text-[#8B0000] font-medium">Upload a file</span>
-                      <p className="pl-1">or drag and drop</p>
-                    </div>
-                    <p className="text-xs text-gray-500">PNG, JPG up to 10MB</p>
-                  </div>
-                )}
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  className="hidden"
-                  accept="image/*"
-                  onChange={handleFileChange}
-                />
-              </div>
+              <Input
+                id="vin"
+                value={formData.vin}
+                onChange={(e) =>
+                  setFormData({ ...formData, vin: e.target.value })
+                }
+                placeholder="1HGBH41JXMN109186"
+                required
+              />
             </div>
           </div>
 
-          <DialogFooter className="mt-6">
-            <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={onClose}>
+              Cancel
+            </Button>
             <Button
               type="submit"
-              disabled={mutation.isPending}
-              className="bg-[#8B0000] hover:bg-[#700000] text-white"
+              disabled={mutation.isPending || servicesLoading}
+              className="bg-[#8B0000] hover:bg-[#700000]"
             >
-              {mutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {taxi ? "Update Taxi" : "Create Taxi"}
+              {mutation.isPending && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              )}
+              {taxi ? "Update" : "Create"}
             </Button>
           </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>
-  );
+  )
 }

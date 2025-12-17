@@ -27,7 +27,8 @@ const menuItems = [
   { icon: History, label: "Ride History", href: "/ride-history" },
   { icon: Tag, label: "Promo Code", href: "/promo-code" },
   { icon: Percent, label: "Commission", href: "/commission" },
-  { icon: UserCircle, label: "Users Profile", href: "/users-profile" }
+  { icon: UserCircle, label: "Users Profile", href: "/users-profile" },
+  { icon: Settings, label: "Settings", href: "/settings" },
 ]
 
 export function Sidebar() {

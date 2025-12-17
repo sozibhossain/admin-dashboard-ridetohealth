@@ -109,6 +109,37 @@ export const authApi = {
   changePassword: (data: { oldPassword: string; newPassword: string }) => api.post("/api/auth/change-password", data),
 }
 
+
+/// update profile uploadProfileImage
+// src/api/profileApi.ts (or wherever your API functions live)
+
+export const profileApi = {
+  // Get current user profile
+  getProfile: () => api.get("/api/user/profile"),
+
+  // Update text fields (name, email, phone, address, etc.)
+  updateProfile: (data: Partial<{
+    fullName: string;
+    email: string;
+    phoneNumber: string;
+    country: string;
+    city: string;
+    state: string;
+    zipcode: string;
+    street_address: string;
+  }>) => api.put("/api/user/profile", data), // JSON body, no multipart
+
+  // Upload or update profile picture only
+  uploadProfileImage: (file: File) => {
+    const formData = new FormData();
+    formData.append("profileImage", file); // Must match upload.single('profileImage')
+
+    return api.put("/api/user/profile/picture", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+  },
+};
+
 // Dashboard Stats API
 export const dashboardApi = {
   getStats: async () => {

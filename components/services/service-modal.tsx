@@ -28,8 +28,10 @@ export function ServiceModal({ isOpen, onClose, service }: ServiceModalProps) {
   const [formData, setFormData] = useState({
     name: "",
     description: "",
+    perKmRate: "",
+    perMileRate: "",
     serviceImage: null as File | null,
-    previewImage: "", // 👈 for existing + new preview
+    previewImage: "",
   })
 
   const queryClient = useQueryClient()
@@ -40,6 +42,8 @@ export function ServiceModal({ isOpen, onClose, service }: ServiceModalProps) {
       setFormData({
         name: service.name || "",
         description: service.description || "",
+        perKmRate: service.perKmRate || "",
+        perMileRate: service.perMileRate || "",
         serviceImage: null,
         previewImage: service.serviceImage || "",
       })
@@ -47,6 +51,8 @@ export function ServiceModal({ isOpen, onClose, service }: ServiceModalProps) {
       setFormData({
         name: "",
         description: "",
+        perKmRate: "",
+        perMileRate: "",
         serviceImage: null,
         previewImage: "",
       })
@@ -76,6 +82,8 @@ export function ServiceModal({ isOpen, onClose, service }: ServiceModalProps) {
     const data = new FormData()
     data.append("name", formData.name)
     data.append("description", formData.description)
+    data.append("perKmRate", formData.perKmRate)
+    data.append("perMileRate", formData.perMileRate)
 
     // Only send image if user selected a new one
     if (formData.serviceImage) {
@@ -119,6 +127,43 @@ export function ServiceModal({ isOpen, onClose, service }: ServiceModalProps) {
               placeholder="Enter service description"
               required
             />
+          </div>
+
+          {/* Rates Section */}
+          <div className="grid grid-cols-2 gap-4">
+            {/* Per KM Rate */}
+            <div className="space-y-2">
+              <Label htmlFor="perKmRate">Per KM Rate ($)</Label>
+              <Input
+                id="perKmRate"
+                type="number"
+                step="0.01"
+                min="0"
+                value={formData.perKmRate}
+                onChange={(e) =>
+                  setFormData({ ...formData, perKmRate: e.target.value })
+                }
+                placeholder="0.00"
+                required
+              />
+            </div>
+
+            {/* Per Mile Rate */}
+            <div className="space-y-2">
+              <Label htmlFor="perMileRate">Per Mile Rate ($)</Label>
+              <Input
+                id="perMileRate"
+                type="number"
+                step="0.01"
+                min="0"
+                value={formData.perMileRate}
+                onChange={(e) =>
+                  setFormData({ ...formData, perMileRate: e.target.value })
+                }
+                placeholder="0.00"
+                required
+              />
+            </div>
           </div>
 
           {/* Image Upload */}
