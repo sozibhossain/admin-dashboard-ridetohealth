@@ -20,6 +20,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import Image from "next/image";
 
 interface Taxi {
   _id: string;
@@ -32,6 +33,8 @@ interface Taxi {
   serviceId: {
     _id: string;
     name: string;
+    description?: string;
+    serviceImage?: string;
   };
   driverId: {
     _id: string;
@@ -74,7 +77,7 @@ export default function TaxiPage() {
   };
 
   const handleDelete = (id: string) => {
-    setTaxiToDelete(id); // Opens your custom confirmation UI
+    setTaxiToDelete(id);
   };
 
   const confirmDelete = () => {
@@ -134,25 +137,16 @@ export default function TaxiPage() {
                 {isLoading ? (
                   <>
                     {[1, 2, 3, 4, 5, 6].map((i) => (
-                      <tr
-                        key={i}
-                        className="border-b border-gray-200 last:border-0"
-                      >
+                      <tr key={i} className="border-b border-gray-200 last:border-0">
                         <td className="p-4">
                           <div className="flex items-center gap-3">
                             <Skeleton className="h-12 w-20 rounded" />
                             <Skeleton className="h-6 w-24" />
                           </div>
                         </td>
-                        <td className="p-4">
-                          <Skeleton className="h-6 w-24" />
-                        </td>
-                        <td className="p-4">
-                          <Skeleton className="h-6 w-20" />
-                        </td>
-                        <td className="p-4">
-                          <Skeleton className="h-6 w-24" />
-                        </td>
+                        <td className="p-4"><Skeleton className="h-6 w-24" /></td>
+                        <td className="p-4"><Skeleton className="h-6 w-20" /></td>
+                        <td className="p-4"><Skeleton className="h-6 w-24" /></td>
                         <td className="p-4">
                           <div className="flex justify-end gap-2">
                             <Skeleton className="h-9 w-9" />
@@ -170,22 +164,27 @@ export default function TaxiPage() {
                     >
                       <td className="p-4">
                         <div className="flex items-center gap-3">
-                          <div className="h-12 w-20 bg-yellow-100 rounded flex items-center justify-center">
-                            <img
-                              src="/taxi-car.jpg"
-                              alt="Taxi"
-                              className="h-10"
+                          <div className="h-12 w-20 bg-gray-100 rounded overflow-hidden flex items-center justify-center">
+                            <Image
+                              src={taxi.serviceId?.serviceImage || "/fallback-taxi.png"}
+                              width={500}
+                              height={500}
+                              alt={`${taxi.taxiName} service`}
+                              className="h-full w-full "
+                              onError={(e) => {
+                                // Fallback if image fails to load
+                                (e.target as HTMLImageElement).src = "/fallback-taxi.png";
+                              }}
                             />
                           </div>
-                          <p className="font-semibold text-gray-900">
-                            {taxi.taxiName}
-                          </p>
+                          <div>
+                            <p className="font-semibold text-gray-900">{taxi.taxiName}</p>
+                            <p className="text-xs text-gray-500">{taxi.serviceId?.name}</p>
+                          </div>
                         </div>
                       </td>
                       <td className="p-4">
-                        <p className="text-sm text-gray-900">
-                          {taxi.plateNumber}
-                        </p>
+                        <p className="text-sm text-gray-900">{taxi.plateNumber}</p>
                       </td>
                       <td className="p-4">
                         <p className="text-sm text-gray-900">
@@ -194,14 +193,11 @@ export default function TaxiPage() {
                       </td>
                       <td className="p-4">
                         <p className="text-sm text-gray-600">
-                          {new Date(taxi.createdAt).toLocaleDateString(
-                            "en-US",
-                            {
-                              month: "2-digit",
-                              day: "2-digit",
-                              year: "numeric",
-                            }
-                          )}
+                          {new Date(taxi.createdAt).toLocaleDateString("en-US", {
+                            month: "2-digit",
+                            day: "2-digit",
+                            year: "numeric",
+                          })}
                         </p>
                       </td>
                       <td className="p-4">
@@ -248,17 +244,14 @@ export default function TaxiPage() {
           )}
         </div>
       </div>
-      {/* // ... inside your return() */}
-      <AlertDialog
-        open={!!taxiToDelete}
-        onOpenChange={() => setTaxiToDelete(null)}
-      >
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!taxiToDelete} onOpenChange={() => setTaxiToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the
-              taxi and remove the data from our servers.
+              This action cannot be undone. This will permanently delete the taxi and remove the data from our servers.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -273,7 +266,7 @@ export default function TaxiPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-
+      {/* Add/Edit Modal */}
       <TaxiModal
         isOpen={isModalOpen}
         onClose={() => {
