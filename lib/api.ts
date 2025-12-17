@@ -106,7 +106,7 @@ export const authApi = {
   requestPasswordReset: (data: { emailOrPhone: string }) => api.post("/api/auth/request-password-reset", data),
   verifyOTP: (data: { email: string; otp: string; type: string }) => api.post("/api/auth/verify-otp", data),
   resetPassword: (data: { emailOrPhone: string; newPassword: string }) => api.post("/api/auth/reset-password", data),
-  changePassword: (data: { oldPassword: string; newPassword: string }) => api.post("/api/user/change-password", data),
+  changePassword: (data: { oldPassword: string; newPassword: string }) => api.post("/api/auth/change-password", data),
 }
 
 // Dashboard Stats API
@@ -128,7 +128,7 @@ export const servicesApi = {
     api.put(`/api/service/services/${id}`, data, {
       headers: { "Content-Type": "multipart/form-data" },
     }),
-  delete: (id: string) => api.delete(`/api/admin/services/${id}`),
+  delete: (id: string) => api.delete(`/api/service/services/${id}`),
 }
 
 // Taxi/Vehicle API
@@ -138,7 +138,7 @@ export const taxiApi = {
   create: (serviceId: string, data: any) => api.post(`/api/admin/services/${serviceId}/vehicle`, data),
   update: (vehicleId: string, driverId: string) =>
     api.put("/api/admin/services/vehicle/assign-vehicle", { vehicleId, driverId }),
-  delete: (id: string) => api.delete(`/api/admin/vehicle/${id}`),
+  delete: (id: string) => api.delete(`/api/admin/services/vehicle/${id}`),
 }
 
 // Drivers API 
@@ -207,3 +207,12 @@ export const driverRequestsApi = {
   approve: (id: string) => api.put(`/api/admin/driver-requests/${id}/approve`),
   reject: (id: string) => api.put(`/api/admin/driver-requests/${id}/reject`),
 }
+
+
+/// notification api
+export const notificationApi = {
+  getAll: (page = 1) => api.get(`/api/notification?page=${page}`),
+  markAsRead: (id: string) => api.put(`/api/notification/${id}/read`),
+  delete: (id: string) => api.delete(`/api/notification/${id}`),
+};
+

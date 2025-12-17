@@ -1,19 +1,22 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { Bell, Loader2 } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
-import { useMutation } from "@tanstack/react-query"
-import { authApi } from "@/lib/api"
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import { authApi, notificationApi } from "@/lib/api"
 
 // shadcn dialog
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 
 export function Header() {
+  const router = useRouter()
+  const queryClient = useQueryClient()
   const [open, setOpen] = useState(false)
 
   const [form, setForm] = useState({
@@ -22,6 +25,16 @@ export function Header() {
     confirmPassword: "",
   })
 
+  // Fetch notifications
+  const { data: notificationsData } = useQuery({
+    queryKey: ["notifications"],
+    queryFn: () => notificationApi.getAll(1).then(res => res.data),
+    refetchInterval: 60000, // auto refresh every 1 min
+  })
+
+  const unreadCount = notificationsData?.notifications?.filter((n: any) => !n.read).length || 0
+
+  // Change password mutation
   const changePasswordMutation = useMutation({
     mutationFn: (data: { oldPassword: string; newPassword: string }) => authApi.changePassword(data),
     onSuccess: () => {
@@ -63,12 +76,17 @@ export function Header() {
       <header className="fixed top-0 right-0 left-[173px] z-30 h-[70px] bg-white border-b border-border">
         <div className="flex h-full items-center justify-end px-6 gap-4">
           {/* Notification Bell */}
-          <button className="relative p-2 hover:bg-gray-100 rounded-full transition-colors">
+          <button
+            onClick={() => router.push("/notifications")}
+            className="relative p-2 hover:bg-gray-100 rounded-full transition-colors"
+          >
             <Bell className="h-5 w-5 text-gray-600" />
-            <span className="absolute top-1 right-1 h-2 w-2 bg-red-500 rounded-full" />
+            {unreadCount > 0 && (
+              <span className="absolute top-1 right-1 h-2 w-2 bg-red-500 rounded-full" />
+            )}
           </button>
 
-          {/* ✅ User Profile (click to open modal) */}
+          {/* User Profile */}
           <button
             type="button"
             onClick={() => setOpen(true)}
@@ -86,7 +104,7 @@ export function Header() {
         </div>
       </header>
 
-      {/* ✅ Change Password Modal */}
+      {/* Change Password Modal */}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-[420px]">
           <DialogHeader>
@@ -143,8 +161,14 @@ export function Header() {
                 Cancel
               </Button>
 
-              <Button type="submit" disabled={changePasswordMutation.isPending} className="bg-[#8B0000] hover:bg-[#700000]">
-                {changePasswordMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              <Button
+                type="submit"
+                disabled={changePasswordMutation.isPending}
+                className="bg-[#8B0000] hover:bg-[#700000]"
+              >
+                {changePasswordMutation.isPending && (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                )}
                 Update
               </Button>
             </DialogFooter>

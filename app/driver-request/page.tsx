@@ -8,14 +8,25 @@ import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { driversApi, type DriverItem } from "@/lib/api"
 import { Trash2, MoreVertical, Check, X } from "lucide-react"
+import { toast } from "sonner" // Assuming you use sonner for notifications
 
-// shadcn dropdown
+// shadcn components
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 function initials(name: string) {
   return name
@@ -29,11 +40,13 @@ function initials(name: string) {
 export default function DriverRequestPage() {
   const qc = useQueryClient()
   const [page, setPage] = useState(1)
+  
+  // State to handle the confirmation modal
+  const [driverToDelete, setDriverToDelete] = useState<string | null>(null)
 
   const { data, isLoading, isFetching, isError } = useQuery({
     queryKey: ["drivers", page],
     queryFn: () => driversApi.getAll(page),
-    keepPreviousData: true,
   })
 
   const pendingDrivers = useMemo(() => {
@@ -41,26 +54,38 @@ export default function DriverRequestPage() {
     return list.filter((d) => d.status === "pending")
   }, [data])
 
+  // Mutations
   const approveMutation = useMutation({
     mutationFn: (driverId: string) => driversApi.approve(driverId),
-    onSuccess: async () => {
-      await qc.invalidateQueries({ queryKey: ["drivers"] })
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["drivers"] })
+      toast.success("Driver approved")
     },
   })
 
   const rejectMutation = useMutation({
     mutationFn: (driverId: string) => driversApi.reject(driverId),
-    onSuccess: async () => {
-      await qc.invalidateQueries({ queryKey: ["drivers"] })
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["drivers"] })
+      toast.success("Driver rejected")
     },
   })
 
   const deleteMutation = useMutation({
     mutationFn: (driverId: string) => driversApi.delete(driverId),
-    onSuccess: async () => {
-      await qc.invalidateQueries({ queryKey: ["drivers"] })
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["drivers"] })
+      setDriverToDelete(null) // Close modal
+      toast.success("Driver request deleted")
     },
+    onError: () => toast.error("Failed to delete request")
   })
+
+  const handleConfirmDelete = () => {
+    if (driverToDelete) {
+      deleteMutation.mutate(driverToDelete)
+    }
+  }
 
   const totalPages = data?.totalPages ?? 1
 
@@ -89,141 +114,86 @@ export default function DriverRequestPage() {
                 {isLoading ? (
                   [...Array(5)].map((_, i) => (
                     <tr key={i} className="border-b border-gray-200 last:border-0">
-                      <td className="p-4" colSpan={5}>
-                        <Skeleton className="h-10 w-full" />
-                      </td>
+                      <td className="p-4" colSpan={5}><Skeleton className="h-10 w-full" /></td>
                     </tr>
                   ))
-                ) : isError ? (
-                  <tr>
-                    <td className="p-6 text-sm text-red-600" colSpan={5}>
-                      Failed to load drivers.
+                ) : pendingDrivers.map((driver: DriverItem) => (
+                  <tr key={driver._id} className="border-b border-gray-200 last:border-0 hover:bg-gray-50">
+                    <td className="p-4">
+                      <div className="flex items-center gap-3">
+                        <Avatar className="h-10 w-10">
+                          <AvatarFallback>{initials(driver.userId?.fullName || "U")}</AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="font-medium text-gray-900">{driver.userId?.fullName}</p>
+                          <p className="text-xs text-gray-400">{driver._id}</p>
+                        </div>
+                      </div>
                     </td>
-                  </tr>
-                ) : pendingDrivers.length === 0 ? (
-                  <tr>
-                    <td className="p-6 text-sm text-gray-600" colSpan={5}>
-                      No pending driver requests.
+                    <td className="p-4 text-sm">{driver.userId?.phoneNumber || "-"}</td>
+                    <td className="p-4 text-sm">{driver.userId?.email || "-"}</td>
+                    <td className="p-4">
+                      <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs">pending</span>
                     </td>
-                  </tr>
-                ) : (
-                  pendingDrivers.map((driver: DriverItem) => {
-                    const user = driver.userId
-                    const fullName = user?.fullName ?? "Unknown"
-                    const email = user?.email ?? "-"
-                    const phone = user?.phoneNumber ?? "-"
-
-                    const busy =
-                      approveMutation.isPending ||
-                      rejectMutation.isPending ||
-                      deleteMutation.isPending
-
-                    return (
-                      <tr key={driver._id} className="border-b border-gray-200 last:border-0 hover:bg-gray-50">
-                        <td className="p-4">
-                          <div className="flex items-center gap-3">
-                            <Avatar className="h-10 w-10">
-                              <AvatarFallback>{initials(fullName) || "?"}</AvatarFallback>
-                            </Avatar>
-                            <div className="leading-tight">
-                              <p className="font-medium text-gray-900">{fullName}</p>
-                              <p className="text-xs text-gray-500">{driver._id}</p>
-                            </div>
-                          </div>
-                        </td>
-
-                        <td className="p-4">
-                          <p className="text-sm text-gray-900">{phone}</p>
-                        </td>
-
-                        <td className="p-4">
-                          <p className="text-sm text-gray-900">{email}</p>
-                        </td>
-
-                        <td className="p-4">
-                          <span className="inline-flex items-center rounded-full bg-yellow-100 px-2.5 py-1 text-xs font-medium text-yellow-800">
-                            pending
-                          </span>
-                        </td>
-
-                        <td className="p-4">
-                          <div className="flex justify-end gap-2">
-                            {/* Dropdown: Approve / Reject */}
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button
-                                  size="icon"
-                                  variant="outline"
-                                  className="h-9 w-9"
-                                  disabled={busy}
-                                  title="Actions"
-                                >
-                                  <MoreVertical className="h-4 w-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-
-                              <DropdownMenuContent align="end" className="w-40">
-                                <DropdownMenuItem
-                                  onClick={() => approveMutation.mutate(driver._id)}
-                                  className="cursor-pointer"
-                                >
-                                  <Check className="mr-2 h-4 w-4 text-green-600" />
-                                  Approve
-                                </DropdownMenuItem>
-
-                                <DropdownMenuItem
-                                  onClick={() => rejectMutation.mutate(driver._id)}
-                                  className="cursor-pointer"
-                                >
-                                  <X className="mr-2 h-4 w-4 text-red-600" />
-                                  Reject
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-
-                            {/* Delete */}
-                            <Button
-                              size="icon"
-                              variant="outline"
-                              className="h-9 w-9 hover:bg-red-50"
-                              disabled={busy}
-                              onClick={() => deleteMutation.mutate(driver._id)}
-                              title="Delete"
-                            >
-                              <Trash2 className="h-4 w-4 text-red-600" />
+                    <td className="p-4">
+                      <div className="flex justify-end gap-2">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button size="icon" variant="outline" className="h-9 w-9">
+                              <MoreVertical className="h-4 w-4" />
                             </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    )
-                  })
-                )}
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => approveMutation.mutate(driver._id)}>
+                              <Check className="mr-2 h-4 w-4 text-green-600" /> Approve
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => rejectMutation.mutate(driver._id)}>
+                              <X className="mr-2 h-4 w-4 text-red-600" /> Reject
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+
+                        {/* Open confirmation modal on click */}
+                        <Button
+                          size="icon"
+                          variant="outline"
+                          className="h-9 w-9 hover:bg-red-50"
+                          onClick={() => setDriverToDelete(driver._id)}
+                        >
+                          <Trash2 className="h-4 w-4 text-red-600" />
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
-
-          {/* Pagination */}
-          <div className="flex items-center justify-between p-4 border-t border-gray-200">
-            <p className="text-sm text-gray-600">
-              Page {data?.page ?? page} of {totalPages}
-              {isFetching ? <span className="ml-2 text-xs text-gray-400">Updating…</span> : null}
-            </p>
-
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
-                Prev
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={page >= totalPages}
-                onClick={() => setPage((p) => p + 1)}
-              >
-                Next
-              </Button>
-            </div>
-          </div>
         </div>
+
+        {/* Delete Confirmation Modal */}
+        <AlertDialog open={!!driverToDelete} onOpenChange={() => setDriverToDelete(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will permanently remove the driver request from the database. 
+                This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>No, Cancel</AlertDialogCancel>
+              <AlertDialogAction 
+                onClick={handleConfirmDelete}
+                className="bg-red-600 hover:bg-red-700"
+              >
+                {deleteMutation.isPending ? "Deleting..." : "Yes, Delete"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Pagination ... */}
       </div>
     </MainLayout>
   )
