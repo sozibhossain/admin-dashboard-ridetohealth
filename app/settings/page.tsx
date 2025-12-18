@@ -126,8 +126,8 @@ export default function SettingsPage() {
           </div>
 
           <Button
-            variant="link"
-            className="text-sm text-blue-600 hover:underline"
+            variant="outline"
+            className="text-sm text-blue-600 hover:underline cursor-pointer border-blue-600 px-8"
             onClick={() => setOpenChangePassword(true)}
           >
             Change Password
@@ -150,7 +150,7 @@ export default function SettingsPage() {
                 </AvatarFallback>
               </Avatar>
 
-              <div className="space-y-2">
+              <div className="space-y-2 cursor-pointer">
                 <Label htmlFor="profileImage">Profile Picture</Label>
                 <Input
                   id="profileImage"
@@ -158,9 +158,10 @@ export default function SettingsPage() {
                   accept="image/*"
                   onChange={handleImageChange}
                   disabled={uploadingImage}
+                  className="cursor-pointer"
                 />
                 {uploadingImage && (
-                  <p className="text-sm text-blue-600">Uploading...</p>
+                  <p className="text-sm text-blue-600 cursor-pointer">Uploading...</p>
                 )}
                 <p className="text-sm text-gray-500">JPG, PNG up to 5MB</p>
               </div>
@@ -168,42 +169,42 @@ export default function SettingsPage() {
 
             {/* Form */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
+              <div className="space-y-2">
                 <Label htmlFor="fullName">Full Name</Label>
                 <Input id="fullName" value={profile.fullName || ""} onChange={handleChange} />
               </div>
 
-              <div>
+              <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
                 <Input id="email" type="email" value={profile.email || ""} onChange={handleChange} />
               </div>
 
-              <div>
+              <div className="space-y-2">
                 <Label htmlFor="phoneNumber">Phone Number</Label>
                 <Input id="phoneNumber" value={profile.phoneNumber || ""} onChange={handleChange} />
               </div>
 
-              <div>
+              <div className="space-y-2">
                 <Label htmlFor="street_address">Street Address</Label>
                 <Input id="street_address" value={profile.street_address || ""} onChange={handleChange} />
               </div>
 
-              <div>
+              <div className="space-y-2">
                 <Label htmlFor="city">City</Label>
                 <Input id="city" value={profile.city || ""} onChange={handleChange} />
               </div>
 
-              <div>
+              <div className="space-y-2">
                 <Label htmlFor="state">State</Label>
                 <Input id="state" value={profile.state || ""} onChange={handleChange} />
               </div>
 
-              <div>
+              <div className="space-y-2">
                 <Label htmlFor="zipcode">Zip Code</Label>
                 <Input id="zipcode" value={profile.zipcode || ""} onChange={handleChange} />
               </div>
 
-              <div>
+              <div className="space-y-2">
                 <Label htmlFor="country">Country</Label>
                 <Input id="country" value={profile.country || ""} onChange={handleChange} />
               </div>

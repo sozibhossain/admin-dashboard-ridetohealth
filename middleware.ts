@@ -1,30 +1,28 @@
-// middleware.ts (or middleware.js)
-import { withAuth } from "next-auth/middleware";
-import { NextResponse } from "next/server";
+import { NextResponse } from "next/server"
+import type { NextRequest } from "next/server"
 
-export default withAuth(
-  function middleware(req) {
-    const token = req.nextauth.token;
+export function middleware(request: NextRequest) {
+  const pathname = request.nextUrl.pathname
 
-    // If no token or user is not admin → redirect to login or forbidden page
-    if (!token || token.role !== "admin") {
-      // Option 1: Redirect to login (recommended)
-      return NextResponse.redirect(new URL("/auth/signin?callbackUrl=/", req.url));
+  // This avoids Edge Runtime incompatibility issues with OpenID Client
+  const sessionCookie =
+    request.cookies.get("next-auth.session-token")?.value ||
+    request.cookies.get("__Secure-next-auth.session-token")?.value
 
-      // Option 2: Show 403 page
-      // return NextResponse.redirect(new URL("/403", req.url));
+  // Protect admin routes
+  if (pathname.startsWith("/") || pathname.startsWith("/")) {
+    if (!sessionCookie) {
+      return NextResponse.redirect(new URL("/login", request.url))
     }
-
-    // User is admin → continue
-    return NextResponse.next();
-  },
-  {
-    callbacks: {
-      // This callback controls whether `withAuth` runs the middleware function
-      authorized: ({ token }) => !!token, // Run middleware only if logged in
-    },
   }
-);
+
+  // Redirect authenticated users away from auth pages
+  if (pathname.startsWith("/auth/") && sessionCookie) {
+    return NextResponse.redirect(new URL("/", request.url))
+  }
+
+  return NextResponse.next()
+}
 
 export const config = {
   matcher: [
@@ -40,4 +38,4 @@ export const config = {
     "/commission/:path*",
     "/settings/:path*",
   ],
-};
+}

@@ -88,17 +88,17 @@ api.interceptors.request.use(
   },
 )
 
-api.interceptors.response.use(
-  (response) => response,
-  async (error) => {
-    if (error.response?.status === 401) {
-      if (typeof window !== "undefined") {
-        window.location.href = "/api/auth/signout"
-      }
-    }
-    return Promise.reject(error)
-  },
-)
+// api.interceptors.response.use(
+//   (response) => response,
+//   async (error) => {
+//     if (error.response?.status === 401) {
+//       if (typeof window !== "undefined") {
+//         window.location.href = "/api/auth/signout"
+//       }
+//     }
+//     return Promise.reject(error)
+//   },
+// )
 
 // Auth API
 export const authApi = {
@@ -208,9 +208,11 @@ export const usersApi = {
   delete: (id: string) => api.delete(`/api/admin/users/${id}`),
 }
 
-// Ride History API
+// Ride History API and add delete ride
 export const ridesApi = {
   getAll: (page = 1) => api.get(`/api/driver/trip-history?page=${page}`),
+  delete: (id: string) => api.delete(`/api/admin/ride/${id}`),
+
 }
 
 // Promo Code API

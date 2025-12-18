@@ -1,12 +1,31 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { useQuery } from "@tanstack/react-query"
-import { MainLayout } from "@/components/layout/main-layout"
-import { Badge } from "@/components/ui/badge"
-import { Skeleton } from "@/components/ui/skeleton"
-import { PaginationControls } from "@/components/ui/pagination-controls"
-import { ridesApi } from "@/lib/api"
+import { useState } from "react";
+import {
+  useQuery,
+  useMutation,
+  useQueryClient,
+} from "@tanstack/react-query";
+import { MainLayout } from "@/components/layout/main-layout";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { PaginationControls } from "@/components/ui/pagination-controls";
+import { ridesApi } from "@/lib/api";
+import { Button } from "@/components/ui/button";
+import { Trash2 } from "lucide-react";
+import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+
+/* ================= TYPES ================= */
 
 type RideStatus =
   | "requested"
@@ -15,174 +34,201 @@ type RideStatus =
   | "started"
   | "completed"
   | "cancelled"
-  | string
+  | string;
 
-type PaymentStatus = "pending" | "paid" | "failed" | string
+type PaymentStatus = "pending" | "paid" | "failed" | string;
 
 interface TripHistoryResponse {
-  success: boolean
+  success: boolean;
   data: {
-    rides: RideItem[]
+    rides: RideItem[];
     pagination: {
-      current: number
-      pages: number
-      total: number
-    }
-  }
+      current: number;
+      pages: number;
+      total: number;
+    };
+  };
 }
 
 interface RideItem {
-  _id: string
+  _id: string;
   customerId?: {
-    _id: string
-    fullName?: string
-    profileImage?: string
-  } | null
-  driverId?: string | null
-  totalFare?: number
-  status?: RideStatus
-  paymentMethod?: string
-  paymentStatus?: PaymentStatus
-  createdAt?: string
+    _id: string;
+    fullName?: string;
+  } | null;
+  driverId?: string | null;
+  totalFare?: number;
+  status?: RideStatus;
+  paymentStatus?: PaymentStatus;
+  createdAt?: string;
 }
 
-function formatDate(iso?: string) {
-  if (!iso) return "-"
-  const d = new Date(iso)
-  return d.toLocaleDateString("en-US", {
+/* ================= HELPERS ================= */
+
+const formatDate = (iso?: string) => {
+  if (!iso) return "-";
+  return new Date(iso).toLocaleDateString("en-US", {
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
-  })
-}
+  });
+};
 
-function shortId(id: string) {
-  return id?.slice(-8) ?? "-"
-}
+const shortId = (id: string) => id.slice(-8);
+
+/* ================= COMPONENT ================= */
 
 export default function RideHistoryPage() {
-  const [page, setPage] = useState(1)
+  const [page, setPage] = useState(1);
+  const [open, setOpen] = useState(false);
+  const [selectedRideId, setSelectedRideId] = useState<string | null>(null);
 
+  const queryClient = useQueryClient();
+
+  /* ---------- FETCH RIDES ---------- */
   const { data, isLoading } = useQuery({
     queryKey: ["rides", page],
     queryFn: async () => {
-      const res = await ridesApi.getAll(page)
-      return res.data as TripHistoryResponse
+      const res = await ridesApi.getAll(page);
+      return res.data as TripHistoryResponse;
     },
     keepPreviousData: true,
-  })
+  });
 
-  const rides = data?.data?.rides ?? []
-  const totalPages = data?.data?.pagination?.pages ?? 1
+  const rides = data?.data?.rides ?? [];
+  const totalPages = data?.data?.pagination?.pages ?? 1;
+
+  /* ---------- DELETE MUTATION ---------- */
+  const deleteRideMutation = useMutation({
+    mutationFn: (id: string) => ridesApi.delete(id),
+    onSuccess: () => {
+      toast.success("Ride deleted successfully");
+      queryClient.invalidateQueries({ queryKey: ["rides"] });
+      setOpen(false);
+      setSelectedRideId(null);
+    },
+    onError: () => {
+      toast.error("Failed to delete ride");
+    },
+  });
+
+  const openDeleteModal = (id: string) => {
+    setSelectedRideId(id);
+    setOpen(true);
+  };
+
+  const handleDelete = () => {
+    if (!selectedRideId) return;
+    deleteRideMutation.mutate(selectedRideId);
+  };
+
+  /* ================= RENDER ================= */
 
   return (
     <MainLayout>
       <div className="space-y-6">
+        {/* Header */}
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Ride History</h1>
           <p className="text-gray-600 mt-1">Dashboard › Ride History</p>
         </div>
 
+        {/* Table */}
         <div className="bg-white rounded-lg border border-gray-200">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="border-b border-gray-200">
                 <tr>
-                  <th className="text-left p-4 text-sm font-semibold text-gray-700">Ride ID</th>
-                  <th className="text-left p-4 text-sm font-semibold text-gray-700">Date</th>
-                  <th className="text-left p-4 text-sm font-semibold text-gray-700">Customer</th>
-                  <th className="text-left p-4 text-sm font-semibold text-gray-700">Driver</th>
-                  <th className="text-left p-4 text-sm font-semibold text-gray-700">Amount</th>
-                  <th className="text-left p-4 text-sm font-semibold text-gray-700">Status</th>
+                  {[
+                    "Ride ID",
+                    "Date",
+                    "Customer",
+                    "Driver",
+                    "Amount",
+                    "Ride Status",
+                    "Payment Status",
+                    "Action",
+                  ].map((h) => (
+                    <th
+                      key={h}
+                      className="text-left p-4 text-sm font-semibold text-gray-700"
+                    >
+                      {h}
+                    </th>
+                  ))}
                 </tr>
               </thead>
 
               <tbody>
                 {isLoading ? (
-                  <>
-                    {[1, 2, 3, 4, 5].map((i) => (
-                      <tr key={i} className="border-b border-gray-200 last:border-0">
-                        <td className="p-4">
-                          <Skeleton className="h-6 w-20" />
-                        </td>
-                        <td className="p-4">
+                  [...Array(5)].map((_, i) => (
+                    <tr key={i} className="border-b">
+                      {[...Array(7)].map((__, j) => (
+                        <td key={j} className="p-4">
                           <Skeleton className="h-6 w-24" />
                         </td>
-                        <td className="p-4">
-                          <Skeleton className="h-6 w-32" />
-                        </td>
-                        <td className="p-4">
-                          <Skeleton className="h-6 w-24" />
-                        </td>
-                        <td className="p-4">
-                          <Skeleton className="h-6 w-16" />
-                        </td>
-                        <td className="p-4">
-                          <Skeleton className="h-6 w-20" />
-                        </td>
-                      </tr>
-                    ))}
-                  </>
-                ) : rides.length > 0 ? (
+                      ))}
+                    </tr>
+                  ))
+                ) : rides.length ? (
                   rides.map((ride) => {
-                    const customerName = ride.customerId?.fullName ?? "Unknown"
-                    const driver = ride.driverId ?? "-"
-                    const amount = ride.totalFare ?? 0
-                    const rideStatus = ride.status ?? "-"
-                    const paymentStatus = ride.paymentStatus ?? "-"
+                    const rideStatus = ride.status ?? "-";
+                    const paymentStatus = ride.paymentStatus ?? "-";
 
-                    const rideStatusClass =
+                    const rideBadge =
                       rideStatus === "completed"
-                        ? "bg-green-100 text-green-700 hover:bg-green-100"
+                        ? "bg-green-100 text-green-700"
                         : rideStatus === "cancelled"
-                          ? "bg-red-100 text-red-700 hover:bg-red-100"
-                          : "bg-yellow-100 text-yellow-800 hover:bg-yellow-100"
+                        ? "bg-red-100 text-red-700"
+                        : "bg-yellow-100 text-yellow-800";
 
-                    const paymentClass =
+                    const paymentBadge =
                       paymentStatus === "paid"
-                        ? "bg-green-100 text-green-700 hover:bg-green-100"
+                        ? "bg-green-100 text-green-700"
                         : paymentStatus === "failed"
-                          ? "bg-red-100 text-red-700 hover:bg-red-100"
-                          : "bg-gray-100 text-gray-700 hover:bg-gray-100"
+                        ? "bg-red-100 text-red-700"
+                        : "bg-gray-100 text-gray-700";
 
                     return (
-                      <tr key={ride._id} className="border-b border-gray-200 last:border-0 hover:bg-gray-50">
+                      <tr
+                        key={ride._id}
+                        className="border-b hover:bg-gray-50"
+                      >
+                        <td className="p-4">{shortId(ride._id)}</td>
+                        <td className="p-4">{formatDate(ride.createdAt)}</td>
                         <td className="p-4">
-                          <p className="text-sm font-medium text-gray-900">{shortId(ride._id)}</p>
+                          {ride.customerId?.fullName ?? "Unknown"}
                         </td>
-
+                        <td className="p-4">{ride.driverId ?? "-"}</td>
                         <td className="p-4">
-                          <p className="text-sm text-gray-900">{formatDate(ride.createdAt)}</p>
+                          ${ride.totalFare?.toLocaleString() ?? 0}
                         </td>
-
                         <td className="p-4">
-                          <p className="text-sm text-gray-900">{customerName}</p>
+                          <Badge className={rideBadge}>
+                            {rideStatus}
+                          </Badge>
                         </td>
-
                         <td className="p-4">
-                          <p className="text-sm text-gray-900">{driver}</p>
+                          <Badge className={paymentBadge}>
+                            {paymentStatus}
+                          </Badge>
                         </td>
-
                         <td className="p-4">
-                          <p className="text-sm font-medium text-gray-900">${amount.toLocaleString()}</p>
-                        </td>
-
-                        <td className="p-4">
-                          <div className="flex flex-wrap gap-2">
-                            <Badge className={rideStatusClass}>
-                              {String(rideStatus).charAt(0).toUpperCase() + String(rideStatus).slice(1)}
-                            </Badge>
-                            <Badge className={paymentClass}>
-                              {String(paymentStatus).charAt(0).toUpperCase() + String(paymentStatus).slice(1)}
-                            </Badge>
-                          </div>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => openDeleteModal(ride._id)}
+                            className="hover:bg-red-50"
+                          >
+                            <Trash2 className="h-4 w-4 text-red-600" />
+                          </Button>
                         </td>
                       </tr>
-                    )
+                    );
                   })
                 ) : (
                   <tr>
-                    <td colSpan={6} className="p-8 text-center text-gray-500">
+                    <td colSpan={8} className="p-8 text-center text-gray-500">
                       No rides found
                     </td>
                   </tr>
@@ -192,12 +238,41 @@ export default function RideHistoryPage() {
           </div>
 
           {totalPages > 1 && (
-            <div className="p-4 border-t border-gray-200">
-              <PaginationControls currentPage={page} totalPages={totalPages} onPageChange={setPage} />
+            <div className="p-4 border-t">
+              <PaginationControls
+                currentPage={page}
+                totalPages={totalPages}
+                onPageChange={setPage}
+              />
             </div>
           )}
         </div>
+
+        {/* Delete Dialog */}
+        <AlertDialog open={open} onOpenChange={setOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete ride?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+
+            <AlertDialogFooter>
+              <AlertDialogCancel>No</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleDelete}
+                disabled={deleteRideMutation.isPending}
+                className="bg-red-600 hover:bg-red-700"
+              >
+                {deleteRideMutation.isPending
+                  ? "Deleting..."
+                  : "Yes, delete"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </MainLayout>
-  )
+  );
 }

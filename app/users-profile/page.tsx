@@ -366,7 +366,7 @@ export default function UsersProfilePage() {
           if (!v) setSelectedUserId(null)
         }}
       >
-        <DialogContent className="sm:max-w-[850px]">
+        <DialogContent className=" overflow-auto max-h-[90vh]">
           <DialogHeader>
             <DialogTitle>
               User Details {isDetailsFetching ? <span className="ml-2 text-xs text-gray-400">Updating…</span> : null}
