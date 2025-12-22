@@ -10,7 +10,7 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen bg-gray-50">
       <Sidebar />
       <Header />
-      <main className="ml-[173px] mt-[70px] p-6">{children}</main>
+      <main className="ml-[204px] mt-[70px] p-6">{children}</main>
     </div>
   )
 }

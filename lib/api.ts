@@ -162,6 +162,13 @@ export const servicesApi = {
   delete: (id: string) => api.delete(`/api/service/services/${id}`),
 }
 
+export const assignTexiApi = {
+  assignVehicle: (payload: { vehicleId: string; driverId: string }) =>
+    api.put("/api/admin/services/vehicle/assign-vehicle", payload),
+};
+
+
+
 // Taxi/Vehicle API
 export const taxiApi = {
   getAll: (page = 1) => api.get(`/api/admin/vehicle?page=${page}`),
